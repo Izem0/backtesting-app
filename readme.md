@@ -1,7 +1,9 @@
-# Strategy Return Streamlit App
+# Backtesting App
 
 ## Description
 This Streamlit app provides a user interface for analyzing strategy returns on financial market data. The users can select a data source (Binance or Yahoo Finance), choose a market, strategy, timeframe, and date period. It then displays the historical returns of the selected strategy on the chosen market.
+
+Note that I prefer to keep my personal strategies private, I simply provide an example in `strategies.py.example` (simply rename it to `strategies.py` if you want to use it in the app).
 
 
 ## Features
