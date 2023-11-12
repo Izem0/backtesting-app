@@ -14,6 +14,7 @@ from utils import get_binance_ohlcv, get_functions, compute_returns
 
 
 # TODO:
+# - add strategies description
 # - implement strategy pattern for sources (with methods like load_data, get_tickers ...)
 # - add more tickers for yfinance
 # - add custom strategy field
