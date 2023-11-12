@@ -1,0 +1,20 @@
+import pandas as pd
+import numpy as np
+import pandas_ta as ta
+
+
+def example_strategy(ohlcv: pd.DataFrame, ma_period: int = 20) -> pd.Series:
+    """Buy when close crosses up Simple Moving Average
+    Sell when closes crosses it down."""
+    # make a dataframe
+    df = pd.DataFrame(ohlcv["close"], index=ohlcv.index)
+
+    # compute moving average
+    df["sma"] = df["close"].rolling(ma_period).mean()
+
+    # compute signal
+    df["signal"] = np.where(df["close"] > df["sma"], 1, 0)
+    # shift it
+    df["signal"] = df["signal"].shift().fillna(0)
+
+    return df["signal"]
