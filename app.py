@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone, time, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -15,10 +15,10 @@ from utils import get_binance_ohlcv, get_functions, compute_returns
 
 # TODO:
 # - add strategies description
+# - add custom strategy field
+# - add report (difference in returns vs benchmark) below in app
 # - implement strategy pattern for sources (with methods like load_data, get_tickers ...)
 # - add more tickers for yfinance
-# - add custom strategy field
-# - add stats below dataframe in app
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -107,38 +107,44 @@ with col4:
     timeframe = st.selectbox("Timeframe", options=["1h", "4h", "1d", "1w"], index=2)
 
 with col5:
-    end_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    end_date = datetime.today().replace(
+        hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
+    )
     start_date = end_date - relativedelta(years=1)
     d = st.date_input(
         "Period",
         value=(start_date, end_date),
-        min_value=datetime(2017, 1, 1),
+        min_value=datetime(2017, 1, 1, tzinfo=timezone.utc),
         max_value=end_date,
         format="YYYY-MM-DD",
     )
     try:
         start_date, end_date = d
+        # convert to datetime with timezone
+        start_date = datetime.combine(start_date, time()).replace(tzinfo=timezone.utc)
+        end_date = datetime.combine(end_date, time()).replace(tzinfo=timezone.utc)
     except ValueError:
         pass
-
 
 ####################
 # STRATEGY RETURNS #
 ####################
-# load market data
+# load market data with offset
+# (the calculation of signal requires data before start_date)
 ohlcv = eval(f"load_{source}_data")(
     markets_map[source][market],
     timeframe=timeframe,
-    start_date=start_date - pd.Timedelta(days=1),
+    start_date=start_date - timedelta(days=365),
     end_date=end_date,
 )
 # get signal from strategy
 signal = getattr(strategies, strategy)(ohlcv)
 ohlcv = ohlcv.join(signal)
+# query only date range needed (-1 day to have returns on day 1 as well)
+ohlcv = ohlcv.loc[ohlcv.index >= start_date - timedelta(days=1)]
 # compute returns
 returns = compute_returns(ohlcv["close"], signal=signal, fees=0.001)
 ohlcv = ohlcv.join(returns)
-
 # clean a bit df
 ohlcv.drop(columns=["open", "high", "low", "volume"], inplace=True)
 ohlcv.sort_index(ascending=False, inplace=True)
