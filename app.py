@@ -87,7 +87,7 @@ markets_map = load_markets_mapping(MARKET_MAP_PATH)
 ###########
 # FILTERS #
 ###########
-col1, col2, col3, col4, col5 = st.columns([2.25, 2.25, 2.25, 2.25, 3])
+col1, col2, col3, col4 = st.columns([3, 3, 3, 3])
 
 with col1:
     source = st.selectbox("Source", options=["binance", "yfinance"], index=0)
@@ -104,9 +104,6 @@ with col3:
     )
 
 with col4:
-    timeframe = st.selectbox("Timeframe", options=["1h", "4h", "1d", "1w"], index=2)
-
-with col5:
     end_date = datetime.today().replace(
         hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
     )
@@ -133,7 +130,7 @@ with col5:
 # (the calculation of signal requires data before start_date)
 ohlcv = eval(f"load_{source}_data")(
     markets_map[source][market],
-    timeframe=timeframe,
+    timeframe="1d",
     start_date=start_date - timedelta(days=365),
     end_date=end_date,
 )
