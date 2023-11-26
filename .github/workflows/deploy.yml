@@ -28,16 +28,6 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Upload strategies.py to EC2
-        run: |
-          echo "${STRATEGIES}" > strategies.py
-          scp -i ~/.ssh/private_key strategies.py ${USER}@${EC2_HOST}:${WORKDIR}
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          USER: ${{ secrets.USER }}
-          STRATEGIES: ${{ secrets.STRATEGIES }}
-          WORKDIR: ${{ secrets.WORKDIR }}
-          
       - name: Deploy code to EC2
         run: |
           ssh -i ~/.ssh/private_key ${USER}@${EC2_HOST} <<'EOF'
