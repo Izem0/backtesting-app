@@ -3,6 +3,7 @@ from datetime import datetime, timezone, time, timedelta
 from pathlib import Path
 
 import pandas as pd
+import pandas.io.formats.style
 import streamlit as st
 import plotly.graph_objects as go
 import yfinance as yf
@@ -131,7 +132,7 @@ def rename_to_month_names(midx):
     return pd.MultiIndex.from_tuples(new_cols, names=["month", "strategy"])
 
 
-def make_pretty(styler: pd.io.formats.style.Styler) -> pd.io.formats.style.Styler:
+def make_pretty(styler: pandas.io.formats.style.Styler) -> pandas.io.formats.style.Styler:
     """Style dataframe"""
     styler.background_gradient(axis=None, cmap=cmap, vmin=-1, vmax=1)
     styler.format({col: "{:.2%}" for col in pivot.columns})
