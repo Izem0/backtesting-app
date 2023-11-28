@@ -6,19 +6,13 @@ import pandas as pd
 import streamlit as st
 import plotly.graph_objects as go
 import yfinance as yf
+from matplotlib.colors import LinearSegmentedColormap
 from plotly.subplots import make_subplots
 from dateutil.relativedelta import relativedelta
 
 import strategies
 from utils import get_binance_ohlcv, get_functions, compute_returns
 
-
-# TODO:
-# - add strategies description
-# - add custom strategy field
-# - add report (difference in returns vs benchmark) below in app
-# - implement strategy pattern for sources (with methods like load_data, get_tickers ...)
-# - add more tickers for yfinance
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -112,6 +106,40 @@ def make_monthly_bargraph(monthly_returns: pd.DataFrame) -> go.Figure:
         **COMMON_LAYOUT,
     )
     return fig
+
+
+def pivot_monthly(monthly_returns: pd.DataFrame) -> pd.DataFrame:
+    melt = monthly_returns.melt(
+        id_vars=["year", "month"],
+        value_vars=["benchmark_return", "strategy_return"],
+        var_name="strategy",
+        value_name="return",
+    )
+    melt["strategy"].replace({"_return": ""}, regex=True, inplace=True)
+    pivot = melt.pivot_table(
+        index=["year"], columns=["month", "strategy"], values=["return"]
+    )
+    pivot = pivot.droplevel(level=0, axis=1)
+    return pivot
+
+
+def rename_to_month_names(midx):
+    """Rename month of multiindex to month names
+    Example: [(1, benchmark), (1, strategy), (2, benchmark) ...] -> [(Jan., benchmark), (Jan., strategy), (Feb., benchmark) ...]
+    """
+    new_cols = [(datetime(2023, col[0], 1).strftime("%b."), col[1]) for col in midx]
+    return pd.MultiIndex.from_tuples(new_cols, names=["month", "strategy"])
+
+
+def make_pretty(styler: pd.io.formats.style.Styler) -> pd.io.formats.style.Styler:
+    """Style dataframe"""
+    styler.background_gradient(axis=None, cmap=cmap, vmin=-1, vmax=1)
+    styler.format({col: "{:.2%}" for col in pivot.columns})
+    return styler
+
+
+def flattern_multiindex(midx, joiner: str = " - "):
+    return [joiner.join(col).strip() for col in midx]
 
 
 ##############
@@ -248,7 +276,23 @@ st.header("Monthly returns")
 # get monthly returns
 monthly_benchmark = compute_monthly_returns(ohlcv["benchmark_return"])
 monthly_strategy = compute_monthly_returns(ohlcv["strategy_return"])
-monthly = monthly_benchmark.merge(monthly_strategy, how="inner", on=["date", "year", "month"])
+monthly = monthly_benchmark.merge(
+    monthly_strategy, how="inner", on=["date", "year", "month"]
+)
 
+st.subheader("Table")
+# compute pivot table
+pivot = pivot_monthly(monthly)
+pivot.columns = rename_to_month_names(pivot.columns)
+# flatten multiindex columns as streamlit currently does not support dataframes with multiple header rows
+pivot.columns = flattern_multiindex(pivot.columns, joiner="/")
+# display pretty dataframe
+cmap = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
+st.dataframe(
+    pivot.style.pipe(make_pretty),
+    column_config={"year": st.column_config.NumberColumn(format="%d")},
+)
+
+st.subheader("Bar graph")
 monthly_bargraph = make_monthly_bargraph(monthly)
 st.plotly_chart(monthly_bargraph, use_container_width=True)
