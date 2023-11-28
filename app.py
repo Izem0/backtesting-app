@@ -68,6 +68,52 @@ def load_yfinance_data(
     return df
 
 
+@st.cache_data
+def compute_monthly_returns(daily_returns: pd.Series) -> pd.DataFrame:
+    """Use daily returns (with datetime as index) to compute monthly returns."""
+    group = daily_returns.groupby(
+        [daily_returns.index.year, daily_returns.index.month]
+    ).transform(lambda x: (x + 1).cumprod() - 1)
+    group = group.groupby([group.index.year, group.index.month]).last()
+    group.index.set_names(["year", "month"], inplace=True)
+    group = group.to_frame().reset_index()
+    group["date"] = [
+        datetime(year, int(month), 1)
+        for year, month in zip(group["year"], group["month"])
+    ]
+    group.sort_values(["year", "month"], inplace=True)
+    return group
+
+
+@st.cache_data
+def make_monthly_bargraph(monthly_returns: pd.DataFrame) -> go.Figure:
+    """Use monthly benchmark and strategy returns to make a bargraph."""
+    fig = go.Figure(
+        [
+            go.Bar(
+                x=monthly_returns["date"],
+                y=monthly_returns["benchmark_return"],
+                name=market,
+                texttemplate="%{y}",
+            ),
+            go.Bar(
+                x=monthly_returns["date"],
+                y=monthly_returns["strategy_return"],
+                name="Strategy",
+                texttemplate="%{y}",
+            ),
+        ]
+    )
+    fig.update_xaxes(dtick="M1", tickformat="%b\n%Y")
+    fig.update_layout(
+        yaxis=dict(title="% monthly return", tickformat=".1%"),
+        barmode="group",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        **COMMON_LAYOUT,
+    )
+    return fig
+
+
 ##############
 # APP CONFIG #
 ##############
@@ -199,41 +245,10 @@ st.plotly_chart(fig, use_container_width=True)
 ###################
 st.subheader("Monthly returns")
 
-ohlcv2 = ohlcv.copy()
-ohlcv2.loc[ohlcv.index.day == 1, "benchmark_return"] = 0
-group = ohlcv2.groupby([ohlcv2.index.year, ohlcv2.index.month])[
-    ["benchmark_return", "strategy_return"]
-].transform(lambda x: (x + 1).cumprod() - 1)
-group2 = group.groupby([group.index.year, group.index.month])[
-    ["benchmark_return", "strategy_return"]
-].last()
-group2.index.set_names(["year", "month"], inplace=True)
-group2.reset_index(inplace=True)
-group2["date"] = [
-    datetime(year, month, 1) for year, month in zip(group2["year"], group2["month"])
-]
-fig = go.Figure(
-    [
-        go.Bar(
-            x=group2["date"],
-            y=group2["benchmark_return"],
-            name=market,
-            texttemplate="%{y}",
-        ),
-        go.Bar(
-            x=group2["date"],
-            y=group2["strategy_return"],
-            name="Strategy",
-            texttemplate="%{y}",
-        ),
-    ]
-)
-fig.update_xaxes(dtick="M1", tickformat="%b\n%Y")
-fig.update_layout(
-    yaxis=dict(title="% monthly return", tickformat=".1%"),
-    barmode="group",
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-    **COMMON_LAYOUT,
-)
+# get monthly returns
+monthly_benchmark = compute_monthly_returns(ohlcv["benchmark_return"])
+monthly_strategy = compute_monthly_returns(ohlcv["strategy_return"])
+monthly = monthly_benchmark.merge(monthly_strategy, how="inner", on=["date", "year", "month"])
 
-st.plotly_chart(fig, use_container_width=True)
+monthly_bargraph = make_monthly_bargraph(monthly)
+st.plotly_chart(monthly_bargraph, use_container_width=True)
