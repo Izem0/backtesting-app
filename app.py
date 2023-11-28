@@ -203,7 +203,7 @@ st.dataframe(
 ############################################
 # BENCHMARK VS STRATEGY CUMULATIVE RETURNS #
 ############################################
-st.subheader("Benchmark vs Strategy Cumulative return")
+st.header("Benchmark vs Strategy Cumulative return")
 
 fig = make_subplots(
     rows=2,
@@ -243,7 +243,7 @@ st.plotly_chart(fig, use_container_width=True)
 ###################
 # MONTHLY RETURNS #
 ###################
-st.subheader("Monthly returns")
+st.header("Monthly returns")
 
 # get monthly returns
 monthly_benchmark = compute_monthly_returns(ohlcv["benchmark_return"])
