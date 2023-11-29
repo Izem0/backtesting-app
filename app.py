@@ -7,7 +7,7 @@ import pandas.io.formats.style
 import streamlit as st
 import plotly.graph_objects as go
 import yfinance as yf
-from matplotlib.colors import LinearSegmentedColormap
+from matplotlib.colors import LinearSegmentedColormap  # type: ignore
 from plotly.subplots import make_subplots
 from dateutil.relativedelta import relativedelta
 
