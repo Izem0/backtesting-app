@@ -135,7 +135,7 @@ def rename_to_month_names(midx):
 def make_pretty(styler: pandas.io.formats.style.Styler) -> pandas.io.formats.style.Styler:
     """Style dataframe"""
     styler.background_gradient(axis=None, cmap=cmap, vmin=-1, vmax=1)
-    styler.format({col: "{:.2%}" for col in pivot.columns})
+    styler.format({col: "{:.2%}" for col in styler.columns})
     return styler
 
 
