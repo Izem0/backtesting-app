@@ -15,10 +15,10 @@ import strategies
 from utils import get_binance_ohlcv, get_functions, compute_returns
 
 
-
 BASE_DIR = Path(__file__).resolve().parent
 MARKET_MAP_PATH = BASE_DIR / "markets_mapping.json"
 COMMON_LAYOUT = dict(margin=dict(l=0, r=0, t=25, b=0))
+CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
 
 
 @st.cache_data
@@ -132,9 +132,40 @@ def rename_to_month_names(midx):
     return pd.MultiIndex.from_tuples(new_cols, names=["month", "strategy"])
 
 
-def make_pretty(styler: pandas.io.formats.style.Styler) -> pandas.io.formats.style.Styler:
-    """Style dataframe"""
-    styler.background_gradient(axis=None, cmap=cmap, vmin=-1, vmax=1)
+def pretty_ohlcv(
+    styler: pandas.io.formats.style.Styler,
+) -> pandas.io.formats.style.Styler:
+    """Style ohlcv dataframe"""
+    styler.background_gradient(
+        axis=1,
+        cmap=CMAP,
+        subset=["benchmark_cum_return", "strategy_cum_return"],
+        vmin=-1,
+        vmax=1,
+    )
+    styler.background_gradient(
+        axis=1,
+        cmap="Reds",
+        subset=["signal"],
+        vmin=0,
+        vmax=1,
+    )
+    format_dict = {col: "{:.2%}" for col in styler.columns if "return" in col}
+    format_dict.update(
+        {
+            "close": "${:.2f}",
+            "signal": "{:.1f}",
+        }
+    )
+    styler.format(format_dict)
+    return styler
+
+
+def pretty_pivot(
+    styler: pandas.io.formats.style.Styler,
+) -> pandas.io.formats.style.Styler:
+    """Style pivot (monthly returns) dataframe"""
+    styler.background_gradient(axis=None, cmap=CMAP, vmin=-1, vmax=1)
     styler.format({col: "{:.2%}" for col in styler.columns})
     return styler
 
@@ -223,10 +254,10 @@ ohlcv.sort_index(ascending=False, inplace=True)
 
 # display df
 st.dataframe(
-    ohlcv,
+    ohlcv.style.pipe(pretty_ohlcv),
     height=350,
     use_container_width=True,
-    column_config={"strategy_return": None},
+    column_config={"benchmark_return": None, "strategy_return": None},
 )
 
 ############################################
@@ -288,10 +319,11 @@ pivot.columns = rename_to_month_names(pivot.columns)
 # flatten multiindex columns as streamlit currently does not support dataframes with multiple header rows
 pivot.columns = flattern_multiindex(pivot.columns, joiner="/")
 # display pretty dataframe
-cmap = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
 st.dataframe(
-    pivot.style.pipe(make_pretty),
-    column_config={"year": st.column_config.NumberColumn(format="%d")},
+    pivot.style.pipe(pretty_pivot),
+    column_config={
+        "year": st.column_config.NumberColumn(format="%d"),
+    },
 )
 
 st.subheader("Bar graph")
