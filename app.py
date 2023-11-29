@@ -213,7 +213,7 @@ with col4:
     end_date = datetime.today().replace(
         hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
     )
-    start_date = end_date - relativedelta(years=1)
+    start_date = end_date - relativedelta(years=2)
     d = st.date_input(
         "Period",
         value=(start_date, end_date),
