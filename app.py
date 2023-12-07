@@ -193,7 +193,7 @@ markets_map = load_markets_mapping(MARKET_MAP_PATH)
 ###########
 # FILTERS #
 ###########
-col1, col2, col3, col4 = st.columns([3, 3, 3, 3])
+col1, col2, col3, col4, col5 = st.columns([2.25, 2.25, 2.25, 2.25, 3])
 
 with col1:
     source = st.selectbox("Source", options=["binance", "yfinance"], index=0)
@@ -210,6 +210,17 @@ with col3:
     )
 
 with col4:
+    fees = st.number_input(
+        "Fee",
+        min_value=0.0,
+        max_value=1.0,
+        value=0.001,
+        step=0.001,
+        format="%4f",
+        help="Fees to apply to trades (0.01=1%)",
+    )
+
+with col5:
     end_date = datetime.today().replace(
         hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
     )
@@ -246,7 +257,7 @@ ohlcv = ohlcv.join(signal)
 # query only date range needed (-1 day to have returns on day 1 as well)
 ohlcv = ohlcv.loc[ohlcv.index >= start_date - timedelta(days=1)]
 # compute returns
-returns = compute_returns(ohlcv["close"], signal=signal, fees=0.001)
+returns = compute_returns(ohlcv["close"], signal=signal, fees=fees)
 ohlcv = ohlcv.join(returns)
 # clean a bit df
 ohlcv.drop(columns=["open", "high", "low", "volume"], inplace=True)
