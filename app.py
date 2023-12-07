@@ -216,7 +216,7 @@ with col4:
         max_value=1.0,
         value=0.001,
         step=0.001,
-        format="%4f",
+        format="%f",
         help="Fees to apply to trades (0.01=1%)",
     )
 
