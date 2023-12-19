@@ -305,7 +305,7 @@ fig.update_layout(
         tickformat=".1%",
     ),
     yaxis2=dict(showgrid=False),
-    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    legend=dict(orientation="h", xanchor="left", x=0, yanchor="bottom", y=1.02),
     **COMMON_LAYOUT,
 )
 # fig.update_yaxes(type="log")
