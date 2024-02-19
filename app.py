@@ -170,7 +170,7 @@ def pretty_pivot(
     return styler
 
 
-def flattern_multiindex(midx, joiner: str = " - "):
+def flatten_multiindex(midx, joiner: str = " - "):
     return [joiner.join(col).strip() for col in midx]
 
 
@@ -328,7 +328,7 @@ st.subheader("Table")
 pivot = pivot_monthly(monthly)
 pivot.columns = rename_to_month_names(pivot.columns)
 # flatten multiindex columns as streamlit currently does not support dataframes with multiple header rows
-pivot.columns = flattern_multiindex(pivot.columns, joiner="/")
+pivot.columns = flatten_multiindex(pivot.columns, joiner="/")
 # display pretty dataframe
 st.dataframe(
     pivot.style.pipe(pretty_pivot),
