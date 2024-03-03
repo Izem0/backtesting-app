@@ -254,7 +254,6 @@ with col5:
 # load market data with offset
 # (the calculation of signal requires data before start_date)
 max_length = get_max_length(getattr(strategies, strategy))
-st.write(max_length)
 ohlcv = eval(f"load_{source}_data")(
     markets_map[source][market],
     timeframe="1d",
