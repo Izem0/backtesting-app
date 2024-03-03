@@ -143,18 +143,18 @@ def pretty_ohlcv(
         vmin=-1,
         vmax=1,
     )
-    styler.background_gradient(
-        axis=1,
-        cmap="Reds",
-        subset=["signal"],
-        vmin=0,
-        vmax=1,
-    )
+    # styler.background_gradient(
+    #     axis=1,
+    #     cmap="Reds",
+    #     subset=["signal"],
+    #     vmin=0,
+    #     vmax=1,
+    # )
     format_dict = {col: "{:.2%}" for col in styler.columns if "return" in col}
     format_dict.update(
         {
             "close": "${:.2f}",
-            "signal": "{:.1f}",
+            # "signal": "{:.1f}",
         }
     )
     styler.format(format_dict)
@@ -260,7 +260,7 @@ ohlcv = ohlcv.loc[ohlcv.index >= start_date - timedelta(days=1)]
 returns = compute_returns(ohlcv["close"], signal=signal, fees=fees)
 ohlcv = ohlcv.join(returns)
 # clean a bit df
-ohlcv.drop(columns=["open", "high", "low", "volume"], inplace=True)
+ohlcv.drop(columns=["open", "high", "low", "volume", "signal"], inplace=True)
 ohlcv.sort_index(ascending=False, inplace=True)
 
 # display df
@@ -277,10 +277,10 @@ st.dataframe(
 st.header("Benchmark vs Strategy Cumulative return")
 
 fig = make_subplots(
-    rows=2,
+    rows=1,
     cols=1,
-    row_heights=[0.7, 0.3],
-    shared_xaxes=True,
+    # row_heights=[0.7, 0.3],
+    # shared_xaxes=True,
 )
 fig.add_trace(
     go.Scatter(
@@ -288,7 +288,9 @@ fig.add_trace(
         y=ohlcv["benchmark_cum_return"],
         name=market,
         showlegend=True,
-    )
+    ),
+    row=1,
+    col=1,
 )
 fig.add_trace(
     go.Scatter(
@@ -296,9 +298,11 @@ fig.add_trace(
         y=ohlcv["strategy_cum_return"],
         name="Strategy",
         showlegend=True,
-    )
+    ),
+    row=1,
+    col=1,
 )
-fig.add_trace(go.Scatter(x=ohlcv.index, y=ohlcv["signal"], name="Signal"), row=2, col=1)
+# fig.add_trace(go.Scatter(x=ohlcv.index, y=ohlcv["signal"], name="Signal"), row=2, col=1)
 fig.update_layout(
     yaxis=dict(
         title="% cumulative return",
