@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone, time, timedelta
 from pathlib import Path
+from typing import Callable
 
 import pandas as pd
 import pandas.io.formats.style
@@ -174,6 +175,13 @@ def flatten_multiindex(midx, joiner: str = " - "):
     return [joiner.join(col).strip() for col in midx]
 
 
+def get_max_length(fn: Callable) -> int:
+    args = fn.__defaults__
+    if not args:
+        return 0
+    return max(args)
+
+
 ##############
 # APP CONFIG #
 ##############
@@ -245,10 +253,12 @@ with col5:
 ####################
 # load market data with offset
 # (the calculation of signal requires data before start_date)
+max_length = get_max_length(getattr(strategies, strategy))
+st.write(max_length)
 ohlcv = eval(f"load_{source}_data")(
     markets_map[source][market],
     timeframe="1d",
-    start_date=start_date - timedelta(days=365),
+    start_date=start_date - timedelta(days=max_length),
     end_date=end_date,
 )
 # get signal from strategy
@@ -280,7 +290,7 @@ st.dataframe(
     column_config={
         "benchmark_return": None,
         "strategy_return": None,
-        "signal": None,
+        # "signal": None,
         "date": st.column_config.Column(label="Date"),
         "close": st.column_config.Column(label="Close Price"),
         "benchmark_cum_return": st.column_config.Column(
