@@ -260,7 +260,15 @@ ohlcv = ohlcv.loc[ohlcv.index >= start_date - timedelta(days=1)]
 returns = compute_returns(ohlcv["close"], signal=signal, fees=fees)
 ohlcv = ohlcv.join(returns)
 # clean a bit df
-ohlcv.drop(columns=["open", "high", "low", "volume", "signal"], inplace=True)
+ohlcv.drop(
+    columns=[
+        "open",
+        "high",
+        "low",
+        "volume",
+    ],
+    inplace=True,
+)
 ohlcv.sort_index(ascending=False, inplace=True)
 
 # display df
@@ -268,7 +276,20 @@ st.dataframe(
     ohlcv.style.pipe(pretty_ohlcv),
     height=350,
     use_container_width=True,
-    column_config={"benchmark_return": None, "strategy_return": None},
+    # column_config={"benchmark_return": None, "strategy_return": None},
+    column_config={
+        "benchmark_return": None,
+        "strategy_return": None,
+        "signal": None,
+        "date": st.column_config.Column(label="Date"),
+        "close": st.column_config.Column(label="Close Price"),
+        "benchmark_cum_return": st.column_config.Column(
+            label="Benchmark Cumulative Return"
+        ),
+        "strategy_cum_return": st.column_config.Column(
+            label="Strategy Cumulative Return"
+        ),
+    },
 )
 
 ############################################
