@@ -13,7 +13,7 @@ from plotly.subplots import make_subplots
 from dateutil.relativedelta import relativedelta
 
 import strategies
-from utils import get_binance_ohlcv, get_functions, compute_returns
+from utils import get_binance_ohlcv, get_functions, compute_returns, get_binance_markets
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -24,12 +24,14 @@ CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
 
 @st.cache_data
 def load_markets_mapping(file_path: str) -> dict:
+    markets_map = {}
     with open(file_path, "r") as f:
         markets_map = json.load(f)
         # reverse key, value for yfinance
         markets_map["yfinance"] = {
             value: key for key, value in markets_map["yfinance"].items()
         }
+    markets_map["binance"] = {key: key for key in load_binance_markets_cache()}
     return markets_map
 
 
@@ -108,6 +110,11 @@ def make_monthly_bargraph(monthly_returns: pd.DataFrame) -> go.Figure:
         **COMMON_LAYOUT,
     )
     return fig
+
+
+@st.cache_data
+def load_binance_markets_cache():
+    return get_binance_markets()
 
 
 def pivot_monthly(monthly_returns: pd.DataFrame) -> pd.DataFrame:
