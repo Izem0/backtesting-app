@@ -155,7 +155,7 @@ def pretty_ohlcv(
     format_dict.update(
         {
             "close": "${:.2f}",
-            # "signal": "{:.1f}",
+            "signal": "{:.1f}",
         }
     )
     styler.format(format_dict)
@@ -289,7 +289,7 @@ st.dataframe(
     column_config={
         "benchmark_return": None,
         "strategy_return": None,
-        "signal": None,
+        # "signal": None,
         "date": st.column_config.Column(label="Date"),
         "close": st.column_config.Column(label="Close Price"),
         "benchmark_cum_return": st.column_config.Column(
