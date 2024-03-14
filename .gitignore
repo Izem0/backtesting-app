@@ -1,5 +1,6 @@
 __pycache__/
 cmds.md
+deploy-to-ec2.md
 strategies.py
 testing_nb.ipynb
 testing_script.py
