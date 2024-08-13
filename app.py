@@ -264,14 +264,14 @@ max_length = get_max_length(getattr(strategies, strategy))
 ohlcv = eval(f"load_{source}_data")(
     markets_map[source][market],
     timeframe="1d",
-    start_date=start_date - timedelta(days=max_length),
+    start_date=datetime(2017, 8, 17, tzinfo=timezone.utc),
     end_date=end_date,
 )
 # get signal from strategy
 signal = getattr(strategies, strategy)(ohlcv)
 ohlcv = ohlcv.join(signal)
 # query only date range needed (-1 day to have returns on day 1 as well)
-ohlcv = ohlcv.loc[ohlcv.index >= start_date - timedelta(days=1)]
+ohlcv = ohlcv.loc[ohlcv.index >= start_date]
 # compute returns
 returns = compute_returns(ohlcv["close"], signal=signal, fees=fees)
 ohlcv = ohlcv.join(returns)
