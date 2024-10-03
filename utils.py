@@ -1,6 +1,7 @@
 import os
 from inspect import getmembers, isfunction
 
+import numpy as np
 import pandas as pd
 import requests
 
@@ -69,8 +70,8 @@ def compute_returns(price, signal, fees=0.001) -> pd.DataFrame:
     df["benchmark_return"] = df["price"].pct_change()
     # Calculate the strategy returns with fees
     df["strategy_return"] = df["signal"] * df["benchmark_return"]
-    entry_exit_days = (
-        df["signal"].diff().fillna(0)
+    entry_exit_days = np.where(
+        df["signal"].diff().fillna(0) != 0, 1, 0
     )  # 1 when entering or exiting, 0 otherwise
     df["strategy_return"] = df["strategy_return"] - fees * entry_exit_days
 
@@ -88,17 +89,17 @@ def compute_returns(price, signal, fees=0.001) -> pd.DataFrame:
     ]
 
 
-
 def get_binance_markets(exclude: list[str] = None) -> list[str]:
     """Return binance's USDT & active markets. Optionally provide a list of markets to exclude."""
     if exclude is None:
         exclude = []
-    r = requests.get('https://api.binance.com/api/v3/exchangeInfo')
+    r = requests.get("https://api.binance.com/api/v3/exchangeInfo")
     return [
-        x['symbol'] for x in r.json()['symbols']
-        if (x['status'] != 'BREAK') 
-        and (x['quoteAsset'] == 'USDT') 
-        and x['symbol'] not in exclude
+        x["symbol"]
+        for x in r.json()["symbols"]
+        if (x["status"] != "BREAK")
+        and (x["quoteAsset"] == "USDT")
+        and x["symbol"] not in exclude
     ]
 
 
@@ -107,17 +108,16 @@ def get_cmc_listings(limit=200, exclude_stables: bool = True):
     https://coinmarketcap.com/api/documentation/v1/#operation/getV1CryptocurrencyListingsLatest"""
 
     r = requests.get(
-        'https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest',
-        headers={'X-CMC_PRO_API_KEY': os.getenv('COINMARKETCAP_API_KEY')},
-        params={'limit': limit}
-        )
-    cmc = pd.DataFrame(r.json()['data'])
-    cmc['stablecoin'] = cmc['tags'].apply(lambda x: 'stablecoin' in x)
+        "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest",
+        headers={"X-CMC_PRO_API_KEY": os.getenv("COINMARKETCAP_API_KEY")},
+        params={"limit": limit},
+    )
+    cmc = pd.DataFrame(r.json()["data"])
+    cmc["stablecoin"] = cmc["tags"].apply(lambda x: "stablecoin" in x)
 
     if exclude_stables:
-        return cmc.loc[cmc['stablecoin'] == False, :]
+        return cmc.loc[cmc["stablecoin"] == False, :]
     return cmc
-
 
 
 def get_binance_top_markets(top: int = 50) -> list[str]:
