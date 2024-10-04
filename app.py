@@ -292,11 +292,10 @@ st.dataframe(
     ohlcv.style.pipe(pretty_ohlcv),
     height=350,
     use_container_width=True,
-    # column_config={"benchmark_return": None, "strategy_return": None},
     column_config={
         "benchmark_return": None,
         "strategy_return": None,
-        # "signal": None,
+        "signal": st.column_config.Column(label="Signal"),  # None
         "date": st.column_config.Column(label="Date"),
         "open": st.column_config.Column(label="Open Price"),
         "benchmark_cum_return": st.column_config.Column(
