@@ -161,7 +161,7 @@ def pretty_ohlcv(
     format_dict = {col: "{:.2%}" for col in styler.columns if "return" in col}
     format_dict.update(
         {
-            "close": "${:.2f}",
+            "open": "${:.2f}",
             "signal": "{:.1f}",
         }
     )
@@ -273,12 +273,12 @@ ohlcv = ohlcv.join(signal)
 # query only date range needed (-1 day to have returns on day 1 as well)
 ohlcv = ohlcv.loc[ohlcv.index >= start_date]
 # compute returns
-returns = compute_returns(ohlcv["close"], signal=signal, fees=fees)
+returns = compute_returns(ohlcv["open"], signal=signal, fees=fees)
 ohlcv = ohlcv.join(returns)
 # clean a bit df
 ohlcv.drop(
     columns=[
-        "open",
+        "close",
         "high",
         "low",
         "volume",
@@ -298,7 +298,7 @@ st.dataframe(
         "strategy_return": None,
         # "signal": None,
         "date": st.column_config.Column(label="Date"),
-        "close": st.column_config.Column(label="Close Price"),
+        "open": st.column_config.Column(label="Open Price"),
         "benchmark_cum_return": st.column_config.Column(
             label="Benchmark Cumulative Return"
         ),

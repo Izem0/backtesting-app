@@ -64,16 +64,14 @@ def get_functions(module) -> list[str]:
 
 
 def compute_returns(price, signal, fees=0.001) -> pd.DataFrame:
+    """`price` should be the open price"""
     # make dataframe
     df = pd.DataFrame({"price": price, "signal": signal}, index=price.index)
     # Calculate the benchmark daily returns
     df["benchmark_return"] = df["price"].pct_change()
     # Calculate the strategy returns with fees
-    df["strategy_return"] = df["signal"] * df["benchmark_return"]
-    entry_exit_days = np.where(
-        df["signal"].diff().fillna(0) != 0, 1, 0
-    )  # 1 when entering or exiting, 0 otherwise
-    df["strategy_return"] = df["strategy_return"] - fees * entry_exit_days
+    df["strategy_return"] = df["signal"].shift() * df["benchmark_return"]
+    df["strategy_return"] = df["strategy_return"] - fees * df["signal"].diff().abs()
 
     # calculate the benchmark cumulative returns
     df["benchmark_cum_return"] = (1 + df["benchmark_return"]).cumprod() - 1
