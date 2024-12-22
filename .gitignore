@@ -1,6 +1,8 @@
 __pycache__/
+.env
 cmds.md
 deploy-to-ec2.md
+markets_mapping.json
 strategies.py
 testing_nb.ipynb
 testing_script.py

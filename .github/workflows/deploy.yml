@@ -27,6 +27,16 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Upload .env to EC2
+        run: |
+          echo COINMARKETCAP_API_KEY=${COINMARKETCAP_API_KEY} >> .env
+          scp -i ~/.ssh/private_key .env ${USER}@${EC2_HOST}:${WORKDIR}
+        env:
+          COINMARKETCAP_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
+          WORKDIR: ${{ secrets.WORKDIR }}
+          USER: ${{ secrets.USER }}
+
       - name: Deploy code to EC2
         run: |
           ssh -i ~/.ssh/private_key ${USER}@${EC2_HOST} <<'EOF'
