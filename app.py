@@ -11,28 +11,17 @@ import yfinance as yf
 from matplotlib.colors import LinearSegmentedColormap  # type: ignore
 from plotly.subplots import make_subplots
 from dateutil.relativedelta import relativedelta
-
+from dotenv import load_dotenv
 import strategies
-from utils import get_binance_ohlcv, get_functions, compute_returns, get_binance_markets
+from utils import get_binance_ohlcv, get_binance_top_markets, get_functions, compute_returns, get_binance_markets
 
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 MARKET_MAP_PATH = BASE_DIR / "markets_mapping.json"
 COMMON_LAYOUT = dict(margin=dict(l=0, r=0, t=25, b=0))
 CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
 
-
-@st.cache_data
-def load_markets_mapping(file_path: str) -> dict:
-    markets_map = {}
-    with open(file_path, "r") as f:
-        markets_map = json.load(f)
-        # reverse key, value for yfinance
-        markets_map["yfinance"] = {
-            value: key for key, value in markets_map["yfinance"].items()
-        }
-    markets_map["binance"] = {key: key for key in load_binance_markets_cache()}
-    return markets_map
 
 
 @st.cache_data
@@ -49,20 +38,6 @@ def load_binance_data(
         end_date=end_date,
     )
     df.set_index("date", inplace=True)
-    return df
-
-
-@st.cache_data
-def load_yfinance_data(
-    market: str,
-    timeframe: str,
-    start_date: datetime,
-    end_date: datetime,
-):
-    df = yf.Ticker(market).history(interval=timeframe, start=start_date, end=end_date)
-    df.index.rename("date", inplace=True)
-    df.columns = df.columns.str.lower()
-    df.drop(columns=["dividends", "stock splits"], inplace=True)
     return df
 
 
@@ -199,22 +174,16 @@ with open(BASE_DIR / "style.css", "r") as f:
     st.markdown(f"<style>{f.read()}<style/>", unsafe_allow_html=True)
 
 
-########################
-# LOAD MARKETS MAPPING #
-########################
-markets_map = load_markets_mapping(MARKET_MAP_PATH)
-
-
 ###########
 # FILTERS #
 ###########
 col1, col2, col3, col4, col5 = st.columns([2.25, 2.25, 2.25, 2.25, 3])
 
 with col1:
-    source = st.selectbox("Source", options=["binance", "yfinance"], index=0)
+    source = st.selectbox("Source", options=["binance"], index=0)
 
 with col2:
-    market = st.selectbox("Market", options=markets_map[source].keys())
+    market = st.selectbox("Market", options=get_binance_top_markets())
 
 with col3:
     strategies_list = get_functions(strategies)
@@ -261,12 +230,13 @@ with col5:
 # load market data with offset
 # (the calculation of signal requires data before start_date)
 max_length = get_max_length(getattr(strategies, strategy))
-ohlcv = eval(f"load_{source}_data")(
-    markets_map[source][market],
+ohlcv = get_binance_ohlcv(
+    market=market,
     timeframe="1d",
     start_date=datetime(2017, 8, 17, tzinfo=timezone.utc),
     end_date=end_date,
 )
+ohlcv.set_index("date", inplace=True)
 # get signal from strategy
 signal = getattr(strategies, strategy)(ohlcv)
 ohlcv = ohlcv.join(signal)

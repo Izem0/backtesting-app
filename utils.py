@@ -101,7 +101,7 @@ def get_binance_markets(exclude: list[str] = None) -> list[str]:
     ]
 
 
-def get_cmc_listings(limit=200, exclude_stables: bool = True):
+def get_cmc_listings(limit=1000, exclude_stables: bool = True):
     """Returns a paginated list of all active cryptocurrencies with latest market data.
     https://coinmarketcap.com/api/documentation/v1/#operation/getV1CryptocurrencyListingsLatest"""
 
@@ -118,7 +118,7 @@ def get_cmc_listings(limit=200, exclude_stables: bool = True):
     return cmc
 
 
-def get_binance_top_markets(top: int = 50) -> list[str]:
+def get_binance_top_markets(top: int = 500) -> list[str]:
     # get binance markets
     markets = pd.DataFrame(dict(symbol=get_binance_markets()))
 
@@ -126,7 +126,7 @@ def get_binance_top_markets(top: int = 50) -> list[str]:
     cmc = get_cmc_listings()
     cmc["symbol"] = cmc["symbol"] + "USDT"
 
-    # keep only top 50 markets
+    # keep only top x markets
     top_x = (
         cmc[["symbol"]]
         .merge(markets, how="inner", on="symbol")
