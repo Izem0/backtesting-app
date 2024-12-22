@@ -13,7 +13,7 @@ from plotly.subplots import make_subplots
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 import strategies
-from utils import get_binance_ohlcv, get_binance_top_markets, get_functions, compute_returns, get_binance_markets
+from utils import get_binance_ohlcv, get_binance_top_markets, get_functions, compute_returns, get_binance_top_markets
 
 load_dotenv()
 
@@ -88,8 +88,8 @@ def make_monthly_bargraph(monthly_returns: pd.DataFrame) -> go.Figure:
 
 
 @st.cache_data
-def load_binance_markets_cache():
-    return get_binance_markets()
+def get_binance_top_markets_cache():
+    return get_binance_top_markets()
 
 
 def pivot_monthly(monthly_returns: pd.DataFrame) -> pd.DataFrame:
@@ -183,7 +183,7 @@ with col1:
     source = st.selectbox("Source", options=["binance"], index=0)
 
 with col2:
-    market = st.selectbox("Market", options=get_binance_top_markets())
+    market = st.selectbox("Market", options=get_binance_top_markets_cache())
 
 with col3:
     strategies_list = get_functions(strategies)
