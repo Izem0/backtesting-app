@@ -237,10 +237,15 @@ ohlcv = get_binance_ohlcv(
     end_date=end_date,
 )
 ohlcv.set_index("date", inplace=True)
+missing_data: bool = start_date < ohlcv.index[0]
+if missing_data:
+    st.warning("This market's available data does not cover the range specified "
+               f"(oldest available date: {ohlcv.index[0]:%Y-%m-%d})")
+    ohlcv.drop(index=ohlcv.index[0], inplace=True)
 # get signal from strategy
 signal = getattr(strategies, strategy)(ohlcv)
 ohlcv = ohlcv.join(signal)
-# query only date range needed (-1 day to have returns on day 1 as well)
+# query only date range needed
 ohlcv = ohlcv.loc[ohlcv.index >= start_date]
 # compute returns
 returns = compute_returns(ohlcv["open"], signal=signal, fees=fees)
