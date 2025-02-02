@@ -1,6 +1,7 @@
 __pycache__/
 .env
 .ruff_cache
+.venv
 .vscode
 backtesting-app.service
 cmds.md
@@ -14,4 +15,3 @@ testing_nb.ipynb
 testing_script.py
 TODO.md
 Untitled-1.ipynb
-venv/
