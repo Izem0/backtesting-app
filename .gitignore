@@ -1,5 +1,6 @@
 __pycache__/
 .env
+.ruff_cache
 .vscode
 cmds.md
 deploy-to-ec2.md
