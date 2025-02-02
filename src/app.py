@@ -1,164 +1,58 @@
-from datetime import datetime, time, timezone
+import datetime as dt
+import os
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 import pandas as pd
-import pandas.io.formats.style
-import plotly.graph_objects as go
+import pendulum
 import streamlit as st
-from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 from matplotlib.colors import LinearSegmentedColormap
-from plotly.subplots import make_subplots
 
 import strategies
-from utils import (
-    compute_returns,
-    get_binance_ohlcv,
-    get_binance_top_markets,
-    get_functions,
-)
+from charts import create_cum_returns_graph, create_monthly_bargraph
+from compute import compute_monthly_returns, compute_returns, pivot_monthly
+from data import get_binance_ohlcv, get_binance_top_markets, load_binance_data
+from style import pretty_ohlcv, pretty_pivot
+from utils import flatten_multiindex, get_module_functions, rename_to_month_names
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
-MARKET_MAP_PATH = BASE_DIR / "markets_mapping.json"
-COMMON_LAYOUT = dict(margin=dict(l=0, r=0, t=25, b=0))
+COMMON_LAYOUT = {"margin": {"l": 0, "r": 0, "t": 25, "b": 0}}
 CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
+COLUMN_CONFIG = {
+    "benchmark_return": None,
+    "strategy_return": None,
+    "signal": st.column_config.Column(label="Signal"),
+    "date": st.column_config.Column(label="Date"),
+    "open": st.column_config.Column(label="Open Price"),
+    "benchmark_cum_return": st.column_config.Column(
+        label="Benchmark Cumulative Return"
+    ),
+    "strategy_cum_return": st.column_config.Column(label="Strategy Cumulative Return"),
+}
 
 
 @st.cache_data
-def load_binance_data(
+def load_binance_data_cache(
     market: str,
     timeframe: str,
-    start_date: datetime,
-    end_date: datetime,
+    start_date: dt.datetime,
+    end_date: dt.datetime,
 ) -> pd.DataFrame:
-    df = get_binance_ohlcv(
+    return load_binance_data(
         market=market,
         timeframe=timeframe,
         start_date=start_date,
         end_date=end_date,
     )
-    df.set_index("date", inplace=True)
-    return df
 
 
 @st.cache_data
-def compute_monthly_returns(daily_returns: pd.Series) -> pd.DataFrame:
-    """Use daily returns (with datetime as index) to compute monthly returns."""
-    group = daily_returns.groupby(
-        [daily_returns.index.year, daily_returns.index.month]
-    ).transform(lambda x: (x + 1).cumprod() - 1)
-    group = group.groupby([group.index.year, group.index.month]).last()
-    group.index.set_names(["year", "month"], inplace=True)
-    group = group.to_frame().reset_index()
-    group["date"] = [
-        datetime(year, int(month), 1)
-        for year, month in zip(group["year"], group["month"])
-    ]
-    group.sort_values(["year", "month"], inplace=True)
-    return group
-
-
-@st.cache_data
-def make_monthly_bargraph(monthly_returns: pd.DataFrame) -> go.Figure:
-    """Use monthly benchmark and strategy returns to make a bargraph."""
-    fig = go.Figure(
-        [
-            go.Bar(
-                x=monthly_returns["date"],
-                y=monthly_returns["benchmark_return"],
-                name=market,
-                texttemplate="%{y}",
-            ),
-            go.Bar(
-                x=monthly_returns["date"],
-                y=monthly_returns["strategy_return"],
-                name="Strategy",
-                texttemplate="%{y}",
-            ),
-        ]
-    )
-    fig.update_xaxes(dtick="M1", tickformat="%b\n%Y")
-    fig.update_layout(
-        yaxis=dict(title="% monthly return", tickformat=".1%"),
-        barmode="group",
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-        **COMMON_LAYOUT,
-    )
-    return fig
-
-
-@st.cache_data
-def get_binance_top_markets_cache():
-    return get_binance_top_markets()
-
-
-def pivot_monthly(monthly_returns: pd.DataFrame) -> pd.DataFrame:
-    melt = monthly_returns.melt(
-        id_vars=["year", "month"],
-        value_vars=["benchmark_return", "strategy_return"],
-        var_name="strategy",
-        value_name="return",
-    )
-    melt["strategy"].replace({"_return": ""}, regex=True, inplace=True)
-    pivot = melt.pivot_table(
-        index=["year"], columns=["month", "strategy"], values=["return"]
-    )
-    pivot = pivot.droplevel(level=0, axis=1)
-    return pivot
-
-
-def rename_to_month_names(midx):
-    """Rename month of multiindex to month names
-    Example: [(1, benchmark), (1, strategy), (2, benchmark) ...]
-    -> [(Jan., benchmark), (Jan., strategy), (Feb., benchmark) ...]
-    """
-    new_cols = [(datetime(2023, col[0], 1).strftime("%b."), col[1]) for col in midx]
-    return pd.MultiIndex.from_tuples(new_cols, names=["month", "strategy"])
-
-
-def pretty_ohlcv(
-    styler: pandas.io.formats.style.Styler,
-) -> pandas.io.formats.style.Styler:
-    """Style ohlcv dataframe"""
-    styler.background_gradient(
-        axis=1,
-        cmap=CMAP,
-        subset=["benchmark_cum_return", "strategy_cum_return"],
-        vmin=-1,
-        vmax=1,
-    )
-    # styler.background_gradient(
-    #     axis=1,
-    #     cmap="Reds",
-    #     subset=["signal"],
-    #     vmin=0,
-    #     vmax=1,
-    # )
-    format_dict = {col: "{:.2%}" for col in styler.columns if "return" in col}
-    format_dict.update(
-        {
-            "open": "${:.2f}",
-            "signal": "{:.1f}",
-        }
-    )
-    styler.format(format_dict)
-    return styler
-
-
-def pretty_pivot(
-    styler: pandas.io.formats.style.Styler,
-) -> pandas.io.formats.style.Styler:
-    """Style pivot (monthly returns) dataframe"""
-    styler.background_gradient(axis=None, cmap=CMAP, vmin=-1, vmax=1)
-    styler.format({col: "{:.2%}" for col in styler.columns})
-    return styler
-
-
-def flatten_multiindex(midx, joiner: str = " - "):
-    return [joiner.join(col).strip() for col in midx]
+def get_binance_top_markets_cache() -> list[str]:
+    cmc_api_key = os.getenv("COINMARKETCAP_API_KEY")
+    return get_binance_top_markets(cmc_api_key)
 
 
 def get_max_length(fn: Callable) -> int:
@@ -174,8 +68,10 @@ def get_max_length(fn: Callable) -> int:
 st.set_page_config(layout="centered")
 st.title("Backtesting app")
 
-with open(BASE_DIR / "style.css", "r") as f:
-    st.markdown(f"<style>{f.read()}<style/>", unsafe_allow_html=True)
+# set css styles
+with open(BASE_DIR / "style.css") as f:
+    styles = f.read()
+st.markdown(f"<style>{styles}<style/>", unsafe_allow_html=True)
 
 
 ###########
@@ -190,7 +86,7 @@ with col2:
     market = st.selectbox("Market", options=get_binance_top_markets_cache())
 
 with col3:
-    strategies_list = get_functions(strategies)
+    strategies_list = get_module_functions(strategies)
     strategy = st.selectbox(
         "Strategy",
         options=strategies_list,
@@ -209,38 +105,41 @@ with col4:
     )
 
 with col5:
-    end_date = datetime.today().replace(
-        hour=0, minute=0, second=0, microsecond=0, tzinfo=timezone.utc
-    )
-    start_date = end_date - relativedelta(years=3)
-    d = st.date_input(
+    end_date = pendulum.now(tz="UTC").start_of("day")
+    start_date = end_date.subtract(years=3)
+    date_input = st.date_input(
         "Period",
         value=(start_date, end_date),
-        min_value=datetime(2017, 1, 1, tzinfo=timezone.utc),
+        min_value=pendulum.datetime(2017, 1, 1, tz="UTC"),
         max_value=end_date,
         format="YYYY-MM-DD",
     )
     try:
-        start_date, end_date = d
-        # convert to datetime with timezone
-        start_date = datetime.combine(start_date, time()).replace(tzinfo=timezone.utc)
-        end_date = datetime.combine(end_date, time()).replace(tzinfo=timezone.utc)
+        start_date, end_date = date_input
+        # convert dates to datetime with timezone
+        start_date = pendulum.datetime(
+            start_date.year, start_date.month, start_date.day, tz="UTC"
+        )
+        end_date = pendulum.datetime(
+            end_date.year, end_date.month, end_date.day, tz="UTC"
+        )
     except ValueError:
         pass
 
-####################
-# STRATEGY RETURNS #
-####################
+##########################
+# TABLE STRATEGY RETURNS #
+##########################
 # load market data with offset
 # (the calculation of signal requires data before start_date)
-max_length = get_max_length(getattr(strategies, strategy))
 ohlcv = get_binance_ohlcv(
     market=market,
     timeframe="1d",
-    start_date=datetime(2017, 8, 17, tzinfo=timezone.utc),
+    start_date=pendulum.datetime(2017, 8, 17, tz="UTC"),
     end_date=end_date,
 )
 ohlcv.set_index("date", inplace=True)
+
+# check for missing data
 missing_data: bool = start_date < ohlcv.index[0]
 if missing_data:
     st.warning(
@@ -248,14 +147,18 @@ if missing_data:
         f"(oldest available date: {ohlcv.index[0]:%Y-%m-%d})"
     )
     ohlcv.drop(index=ohlcv.index[0], inplace=True)
+
 # get signal from strategy
 signal = getattr(strategies, strategy)(ohlcv)
 ohlcv = ohlcv.join(signal)
+
 # query only date range needed
 ohlcv = ohlcv.loc[ohlcv.index >= start_date]
+
 # compute returns
 returns = compute_returns(ohlcv["open"], signal=signal, fees=fees)
 ohlcv = ohlcv.join(returns)
+
 # clean a bit df
 ohlcv.drop(
     columns=[
@@ -268,73 +171,25 @@ ohlcv.drop(
 )
 ohlcv.sort_index(ascending=False, inplace=True)
 
-# display df
+# display returns
 st.dataframe(
-    ohlcv.style.pipe(pretty_ohlcv),
+    ohlcv.style.pipe(pretty_ohlcv, cmap=CMAP),
     height=350,
     use_container_width=True,
-    column_config={
-        "benchmark_return": None,
-        "strategy_return": None,
-        "signal": st.column_config.Column(label="Signal"),  # None
-        "date": st.column_config.Column(label="Date"),
-        "open": st.column_config.Column(label="Open Price"),
-        "benchmark_cum_return": st.column_config.Column(
-            label="Benchmark Cumulative Return"
-        ),
-        "strategy_cum_return": st.column_config.Column(
-            label="Strategy Cumulative Return"
-        ),
-    },
+    column_config=COLUMN_CONFIG,
 )
 
-############################################
-# BENCHMARK VS STRATEGY CUMULATIVE RETURNS #
-############################################
+############################
+# CHART CUMULATIVE RETURNS #
+############################
 st.header("Benchmark vs Strategy Cumulative return")
 
-fig = make_subplots(
-    rows=1,
-    cols=1,
-    # row_heights=[0.7, 0.3],
-    # shared_xaxes=True,
-)
-fig.add_trace(
-    go.Scatter(
-        x=ohlcv.index,
-        y=ohlcv["benchmark_cum_return"],
-        name=market,
-        showlegend=True,
-    ),
-    row=1,
-    col=1,
-)
-fig.add_trace(
-    go.Scatter(
-        x=ohlcv.index,
-        y=ohlcv["strategy_cum_return"],
-        name="Strategy",
-        showlegend=True,
-    ),
-    row=1,
-    col=1,
-)
-# fig.add_trace(go.Scatter(x=ohlcv.index, y=ohlcv["signal"], name="Signal"), row=2, col=1)
-fig.update_layout(
-    yaxis=dict(
-        title="% cumulative return",
-        tickformat=".1%",
-    ),
-    yaxis2=dict(showgrid=False),
-    legend=dict(orientation="h", xanchor="left", x=0, yanchor="bottom", y=1.02),
-    **COMMON_LAYOUT,
-)
-# fig.update_yaxes(type="log")
-st.plotly_chart(fig, use_container_width=True)
+cum_returns_graph = create_cum_returns_graph(ohlcv, market=market, **COMMON_LAYOUT)
+st.plotly_chart(cum_returns_graph, use_container_width=True)
 
-###################
-# MONTHLY RETURNS #
-###################
+#########################
+# CHART MONTHLY RETURNS #
+#########################
 st.header("Monthly returns")
 
 # get monthly returns
@@ -348,16 +203,17 @@ st.subheader("Table")
 # compute pivot table
 pivot = pivot_monthly(monthly)
 pivot.columns = rename_to_month_names(pivot.columns)
-# flatten multiindex columns as streamlit currently does not support dataframes with multiple header rows
+# flatten multiindex columns as streamlit currently does not support
+# dataframes with multiple header rows
 pivot.columns = flatten_multiindex(pivot.columns, joiner="/")
 # display pretty dataframe
 st.dataframe(
-    pivot.style.pipe(pretty_pivot),
+    pivot.style.pipe(pretty_pivot, cmap=CMAP),
     column_config={
         "year": st.column_config.NumberColumn(format="%d"),
     },
 )
 
 st.subheader("Bar graph")
-monthly_bargraph = make_monthly_bargraph(monthly)
+monthly_bargraph = create_monthly_bargraph(monthly, market=market, **COMMON_LAYOUT)
 st.plotly_chart(monthly_bargraph, use_container_width=True)
