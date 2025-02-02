@@ -1,5 +1,6 @@
 __pycache__/
 .env
+.vscode
 cmds.md
 deploy-to-ec2.md
 markets_mapping.json
