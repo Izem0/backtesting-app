@@ -1,19 +1,23 @@
-import json
-from datetime import datetime, timezone, time, timedelta
+from datetime import datetime, time, timezone
 from pathlib import Path
 from typing import Callable
 
 import pandas as pd
 import pandas.io.formats.style
-import streamlit as st
 import plotly.graph_objects as go
-import yfinance as yf
-from matplotlib.colors import LinearSegmentedColormap  # type: ignore
-from plotly.subplots import make_subplots
+import streamlit as st
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
+from matplotlib.colors import LinearSegmentedColormap
+from plotly.subplots import make_subplots
+
 import strategies
-from utils import get_binance_ohlcv, get_binance_top_markets, get_functions, compute_returns, get_binance_top_markets
+from utils import (
+    compute_returns,
+    get_binance_ohlcv,
+    get_binance_top_markets,
+    get_functions,
+)
 
 load_dotenv()
 
@@ -21,7 +25,6 @@ BASE_DIR = Path(__file__).resolve().parent
 MARKET_MAP_PATH = BASE_DIR / "markets_mapping.json"
 COMMON_LAYOUT = dict(margin=dict(l=0, r=0, t=25, b=0))
 CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
-
 
 
 @st.cache_data
@@ -109,7 +112,8 @@ def pivot_monthly(monthly_returns: pd.DataFrame) -> pd.DataFrame:
 
 def rename_to_month_names(midx):
     """Rename month of multiindex to month names
-    Example: [(1, benchmark), (1, strategy), (2, benchmark) ...] -> [(Jan., benchmark), (Jan., strategy), (Feb., benchmark) ...]
+    Example: [(1, benchmark), (1, strategy), (2, benchmark) ...]
+    -> [(Jan., benchmark), (Jan., strategy), (Feb., benchmark) ...]
     """
     new_cols = [(datetime(2023, col[0], 1).strftime("%b."), col[1]) for col in midx]
     return pd.MultiIndex.from_tuples(new_cols, names=["month", "strategy"])
@@ -239,8 +243,10 @@ ohlcv = get_binance_ohlcv(
 ohlcv.set_index("date", inplace=True)
 missing_data: bool = start_date < ohlcv.index[0]
 if missing_data:
-    st.warning("This market's available data does not cover the range specified "
-               f"(oldest available date: {ohlcv.index[0]:%Y-%m-%d})")
+    st.warning(
+        "This market's available data does not cover the range specified "
+        f"(oldest available date: {ohlcv.index[0]:%Y-%m-%d})"
+    )
     ohlcv.drop(index=ohlcv.index[0], inplace=True)
 # get signal from strategy
 signal = getattr(strategies, strategy)(ohlcv)

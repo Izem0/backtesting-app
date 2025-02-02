@@ -1,7 +1,6 @@
 import os
 from inspect import getmembers, isfunction
 
-import numpy as np
 import pandas as pd
 import requests
 
@@ -103,7 +102,8 @@ def get_binance_markets(exclude: list[str] = None) -> list[str]:
 
 def get_cmc_listings(limit=1000, exclude_stables: bool = True):
     """Returns a paginated list of all active cryptocurrencies with latest market data.
-    https://coinmarketcap.com/api/documentation/v1/#operation/getV1CryptocurrencyListingsLatest"""
+    https://coinmarketcap.com/api/documentation/v1/#operation/getV1CryptocurrencyListingsLatest
+    """
 
     r = requests.get(
         "https://pro-api.coinmarketcap.com/v1/cryptocurrency/listings/latest",
