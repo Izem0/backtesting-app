@@ -43,8 +43,8 @@ jobs:
           cd ${WORKDIR}
           git reset --hard HEAD
           git pull origin main
-          uv sync
-          sudo systemctl restart backtesting-app
+          source ./.venv/bin/activate
+          pip install -r ./requirements.txt
           EOF
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
