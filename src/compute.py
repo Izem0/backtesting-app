@@ -52,7 +52,7 @@ def pivot_monthly(monthly_returns: pd.DataFrame) -> pd.DataFrame:
         var_name="strategy",
         value_name="return",
     )
-    melt["strategy"].replace({"_return": ""}, regex=True, inplace=True)
+    melt["strategy"] = melt["strategy"].replace({"_return": ""}, regex=True)
     pivot = melt.pivot_table(
         index=["year"], columns=["month", "strategy"], values=["return"]
     )
