@@ -3,25 +3,27 @@ import os
 from collections.abc import Callable
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pendulum
 import streamlit as st
+import vectorbt as vbt
 from dotenv import load_dotenv
 from matplotlib.colors import LinearSegmentedColormap
 
 import strategies
 from charts import create_cum_returns_graph, create_monthly_bargraph
-from compute import compute_monthly_returns, compute_returns, pivot_monthly
-from data import get_binance_ohlcv, get_binance_top_markets, load_binance_data
-from style import pretty_ohlcv, pretty_pivot
-from utils import flatten_multiindex, get_module_functions, rename_to_month_names
+from compute import compute_monthly_returns
+from data import get_binance_top_markets
+from style import pretty_ohlcv
+from utils import get_module_functions
 
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent
 COMMON_LAYOUT = {"margin": {"l": 0, "r": 0, "t": 25, "b": 0}}
 CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
-COLUMN_CONFIG = {
+RETURNS_COLUMN_CONFIG = {
     "benchmark_return": None,
     "strategy_return": None,
     "signal": st.column_config.Column(label="Signal"),
@@ -32,21 +34,31 @@ COLUMN_CONFIG = {
     ),
     "strategy_cum_return": st.column_config.Column(label="Strategy Cumulative Return"),
 }
+METRICS_TO_EXCLUDE = [
+    "expectancy",
+    "profit_factor",
+    "calmar_ratio",
+    "omega_ratio",
+    "sortino_ratio",
+    "max_gross_exposure",
+]
 
 
 @st.cache_data
-def load_binance_data_cache(
-    market: str,
-    timeframe: str,
-    start_date: dt.datetime,
-    end_date: dt.datetime,
+def load_data_cache(
+    symbols: list[str],
+    interval: str,
+    start: dt.datetime,
+    end: dt.datetime,
 ) -> pd.DataFrame:
-    return load_binance_data(
-        market=market,
-        timeframe=timeframe,
-        start_date=start_date,
-        end_date=end_date,
+    data = vbt.BinanceData.download(
+        symbols=symbols,
+        interval=interval,
+        start=start,
+        end=end,
     )
+    data.data[market].columns = data.data[market].columns.str.lower()
+    return data.data[symbols[0]]
 
 
 @st.cache_data
@@ -77,7 +89,7 @@ st.markdown(f"<style>{styles}<style/>", unsafe_allow_html=True)
 ###########
 # FILTERS #
 ###########
-col1, col2, col3, col4, col5 = st.columns([2.25, 2.25, 2.25, 2.25, 3])
+col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
 
 with col1:
     source = st.selectbox("Source", options=["binance"], index=0)
@@ -86,14 +98,6 @@ with col2:
     market = st.selectbox("Market", options=get_binance_top_markets_cache())
 
 with col3:
-    strategies_list = get_module_functions(strategies)
-    strategy = st.selectbox(
-        "Strategy",
-        options=strategies_list,
-        index=strategies_list.index("secret_sauce_crypto"),
-    )
-
-with col4:
     fees = st.number_input(
         "Fee",
         min_value=0.0,
@@ -104,13 +108,13 @@ with col4:
         help="Fees to apply to trades (0.01=1%)",
     )
 
-with col5:
+with col4:
     end_date = pendulum.now(tz="UTC").start_of("day")
     start_date = end_date.subtract(years=3)
     date_input = st.date_input(
         "Period",
         value=(start_date, end_date),
-        min_value=pendulum.datetime(2017, 1, 1, tz="UTC"),
+        min_value=None,
         max_value=end_date,
         format="YYYY-MM-DD",
     )
@@ -126,94 +130,112 @@ with col5:
     except ValueError:
         pass
 
+# select strategies
+strategies_list = get_module_functions(strategies)
+strategies_choice = st.multiselect(
+    "Strategies",
+    options=strategies_list,
+    default=["buy_and_hold", "secret_sauce_crypto"],
+)
+
+if not strategies_choice:
+    st.stop()
+
 ##########################
 # TABLE STRATEGY RETURNS #
 ##########################
 # load market data with offset
 # (the calculation of signal requires data before start_date)
-ohlcv = get_binance_ohlcv(
-    market=market,
-    timeframe="1d",
-    start_date=pendulum.datetime(2017, 8, 17, tz="UTC"),
-    end_date=end_date,
+ohlcv_full = load_data_cache(
+    symbols=[market],
+    interval="1d",
+    start=start_date.subtract(days=90),
+    end=end_date.add(days=1),
 )
-ohlcv.set_index("date", inplace=True)
+ohlcv = ohlcv_full.loc[ohlcv_full.index >= start_date]
 
 # check for missing data
-missing_data: bool = start_date < ohlcv.index[0]
+missing_data: bool = start_date < ohlcv_full.index[0]
 if missing_data:
     st.warning(
         "This market's available data does not cover the range specified "
         f"(oldest available date: {ohlcv.index[0]:%Y-%m-%d})"
     )
-    ohlcv.drop(index=ohlcv.index[0], inplace=True)
+    ohlcv = ohlcv.drop(index=ohlcv.index[0])
 
-# get signal from strategy
-signal = getattr(strategies, strategy)(ohlcv)
-ohlcv = ohlcv.join(signal)
+# get signals & size for strategies
+size_df = pd.DataFrame()
+min_size_df = pd.DataFrame(index=ohlcv.index)
+for strat in strategies_choice:
+    signal = getattr(strategies, strat)(ohlcv_full)
+    # query only date range needed
+    size_df[strat] = signal.loc[signal.index >= ohlcv.index[0]]
 
-# query only date range needed
-ohlcv = ohlcv.loc[ohlcv.index >= start_date]
+    if strat == "secret_sauce_crypto":
+        min_size_df[strat] = 100 / ohlcv["open"].values
+        continue
 
-# compute returns
-returns = compute_returns(ohlcv["open"], signal=signal, fees=fees)
-ohlcv = ohlcv.join(returns)
+    # set min size as 0 for other startegies
+    min_size_df[strat] = [0] * ohlcv.shape[0]
 
-# clean a bit df
-ohlcv.drop(
-    columns=[
-        "close",
-        "high",
-        "low",
-        "volume",
-    ],
-    inplace=True,
+
+# instantiate portfolio
+pf = vbt.Portfolio.from_orders(
+    ohlcv["open"],
+    size=size_df,
+    fees=fees,
+    size_type="targetpercent",
+    freq="1D",
+    min_size=min_size_df,
+    init_cash=1000,
 )
-ohlcv.sort_index(ascending=False, inplace=True)
 
-# display returns
+# display stats
+metrics = [m for m in vbt.Portfolio.metrics.keys() if m not in METRICS_TO_EXCLUDE]
+stats = pf.stats(metrics=metrics, agg_func=None).round(4).T
 st.dataframe(
-    ohlcv.style.pipe(pretty_ohlcv, cmap=CMAP),
+    stats,
     height=350,
     use_container_width=True,
-    column_config=COLUMN_CONFIG,
 )
 
-############################
-# CHART CUMULATIVE RETURNS #
-############################
+# display cumulative returns
+stats = pd.DataFrame(index=ohlcv.index)
+format_dict = {}
+for strat in strategies_choice:
+    signal_col_name = f"{strat}_signal"
+    stats = stats.join(size_df[strat].to_frame(signal_col_name))
+    stats = stats.join(pf.cumulative_returns()[strat])
+    # df formatting
+    format_dict.update({signal_col_name: "{:.2f}", strat: "{:.2%}"})
+
+st.dataframe(
+    stats[::-1].style.pipe(pretty_ohlcv, cmap=CMAP, format_dict=format_dict),
+    height=350,
+    use_container_width=True,
+    column_config=RETURNS_COLUMN_CONFIG,
+)
+
+# ############################
+# # CHART CUMULATIVE RETURNS #
+# ############################
 st.header("Benchmark vs Strategy Cumulative return")
 
-cum_returns_graph = create_cum_returns_graph(ohlcv, market=market, **COMMON_LAYOUT)
+cum_returns_graph = create_cum_returns_graph(stats[strategies_choice], **COMMON_LAYOUT)
 st.plotly_chart(cum_returns_graph, use_container_width=True)
 
-#########################
-# CHART MONTHLY RETURNS #
-#########################
-st.header("Monthly returns")
 
+# #########################
+# # CHART MONTHLY RETURNS #
+# #########################
+st.subheader("Monthly returns")
 # get monthly returns
-monthly_benchmark = compute_monthly_returns(ohlcv["benchmark_return"])
-monthly_strategy = compute_monthly_returns(ohlcv["strategy_return"])
-monthly = monthly_benchmark.merge(
-    monthly_strategy, how="inner", on=["date", "year", "month"]
-)
+monthly_returns = []
+for strat in strategies_choice:
+    returns = pf.asset_returns()[strat]
+    returns = returns.replace({-np.inf: 0})
+    monthly = compute_monthly_returns(returns)
+    monthly_returns.append(monthly)
 
-st.subheader("Table")
-# compute pivot table
-pivot = pivot_monthly(monthly)
-pivot.columns = rename_to_month_names(pivot.columns)
-# flatten multiindex columns as streamlit currently does not support
-# dataframes with multiple header rows
-pivot.columns = flatten_multiindex(pivot.columns, joiner="/")
-# display pretty dataframe
-st.dataframe(
-    pivot.style.pipe(pretty_pivot, cmap=CMAP),
-    column_config={
-        "year": st.column_config.NumberColumn(format="%d"),
-    },
-)
-
-st.subheader("Bar graph")
-monthly_bargraph = create_monthly_bargraph(monthly, market=market, **COMMON_LAYOUT)
+monthly_bargraph = create_monthly_bargraph(monthly_returns, **COMMON_LAYOUT)
 st.plotly_chart(monthly_bargraph, use_container_width=True)

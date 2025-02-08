@@ -3,30 +3,20 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
-def create_cum_returns_graph(
-    cum_returns: pd.DataFrame, market: str, **layout_kwargs
-) -> go.Figure:
+def create_cum_returns_graph(data: pd.DataFrame, **layout_kwargs) -> go.Figure:
     fig = make_subplots(rows=1, cols=1)
-    fig.add_trace(
-        go.Scatter(
-            x=cum_returns.index,
-            y=cum_returns["benchmark_cum_return"],
-            name=market,
-            showlegend=True,
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=cum_returns.index,
-            y=cum_returns["strategy_cum_return"],
-            name="Strategy",
-            showlegend=True,
-        ),
-        row=1,
-        col=1,
-    )
+    for col in data.columns:
+        fig.add_trace(
+            go.Scatter(
+                x=data.index,
+                y=data[col],
+                name=col,
+                showlegend=True,
+            ),
+            row=1,
+            col=1,
+        )
+
     fig.update_layout(
         yaxis={
             "title": "% cumulative return",
@@ -45,26 +35,18 @@ def create_cum_returns_graph(
     return fig
 
 
-def create_monthly_bargraph(
-    monthly_returns: pd.DataFrame, market: str, **layout_kwargs
-) -> go.Figure:
+def create_monthly_bargraph(data: list[pd.Series], **layout_kwargs) -> go.Figure:
     """Use monthly benchmark and strategy returns to make a bargraph."""
-    fig = go.Figure(
-        [
-            go.Bar(
-                x=monthly_returns["date"],
-                y=monthly_returns["benchmark_return"],
-                name=market,
-                texttemplate="%{y}",
-            ),
-            go.Bar(
-                x=monthly_returns["date"],
-                y=monthly_returns["strategy_return"],
-                name="Strategy",
-                texttemplate="%{y}",
-            ),
-        ]
-    )
+    bars = []
+    for d in data:
+        bar = go.Bar(
+            x=d.index,
+            y=d.values,
+            name=d.name,
+            texttemplate="%{y}",
+        )
+        bars.append(bar)
+    fig = go.Figure(bars)
     fig.update_xaxes(dtick="M1", tickformat="%b\n%Y")
     fig.update_layout(
         yaxis={"title": "% monthly return", "tickformat": ".1%"},
