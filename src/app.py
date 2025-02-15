@@ -25,15 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent
 COMMON_LAYOUT = {"margin": {"l": 0, "r": 0, "t": 25, "b": 0}}
 CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
 RETURNS_COLUMN_CONFIG = {
-    "benchmark_return": None,
-    "strategy_return": None,
-    "signal": st.column_config.Column(label="Signal"),
-    "date": st.column_config.Column(label="Date"),
-    "open": st.column_config.Column(label="Open Price"),
-    "benchmark_cum_return": st.column_config.Column(
-        label="Benchmark Cumulative Return"
-    ),
-    "strategy_cum_return": st.column_config.Column(label="Strategy Cumulative Return"),
+    "open": st.column_config.NumberColumn(label="Open Price", format="$%d"),
 }
 METRICS_TO_EXCLUDE = [
     "expectancy",
@@ -195,20 +187,24 @@ st.dataframe(
 )
 
 # display cumulative returns
-stats = pd.DataFrame(index=ohlcv.index)
-format_dict = {}
+returns = pd.DataFrame(data=ohlcv["open"], index=ohlcv.index)
+format_dict = {"open": "${:.2f}"}
 for strat in strategies_choice:
     signal_col_name = f"{strat}_signal"
-    stats = stats.join(size_df[strat].to_frame(signal_col_name))
-    stats = stats.join(pf.cumulative_returns()[strat])
+    returns = returns.join(size_df[strat].to_frame(signal_col_name))
+    returns = returns.join(pf.cumulative_returns()[strat])
     # df formatting
-    format_dict.update({signal_col_name: "{:.2f}", strat: "{:.2%}"})
+    format_dict.update({signal_col_name: "{:.1f}", strat: "{:.2%}"})
 
 st.dataframe(
-    stats[::-1].style.pipe(pretty_ohlcv, cmap=CMAP, format_dict=format_dict),
+    returns[::-1].style.pipe(
+        pretty_ohlcv,
+        cmap=CMAP,
+        format_dict=format_dict,
+        exclude_regex=r".*signal|open.*",
+    ),
     height=350,
     use_container_width=True,
-    column_config=RETURNS_COLUMN_CONFIG,
 )
 
 # ############################

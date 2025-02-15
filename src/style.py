@@ -1,16 +1,20 @@
+import re
+
 import pandas as pd
-import pandas.io.formats.style
 from matplotlib.colors import LinearSegmentedColormap
 
 
 def pretty_ohlcv(
-    styler: pd.io.formats.style.Styler, cmap: LinearSegmentedColormap, format_dict: dict
+    styler: pd.io.formats.style.Styler,
+    cmap: LinearSegmentedColormap,
+    format_dict: dict,
+    exclude_regex: str,
 ) -> pd.io.formats.style.Styler:
     """Style ohlcv dataframe"""
     styler.background_gradient(
         axis=1,
         cmap=cmap,
-        subset=[col for col in styler.columns if "signal" not in col],
+        subset=[col for col in styler.columns if not re.match(exclude_regex, col)],
         vmin=-1,
         vmax=1,
     )
