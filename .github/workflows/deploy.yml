@@ -13,41 +13,21 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@main
 
-      - name: Create known_hosts file
-        run: |
-          mkdir -p ~/.ssh
-          ssh-keyscan -H ${EC2_HOST} >> ~/.ssh/known_hosts
-        env:
-          EC2_HOST: ${{ secrets.EC2_HOST }}
+      - name: Install SSH key
+        uses: shimataro/ssh-key-action@v2
+        with:
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          known_hosts: ${{ secrets.KNOWN_HOSTS }}
 
-      - name: Write SSH key to file
+      - name: Copy files to remote server
         run: |
-          echo "${SSH_PRIVATE_KEY}" > ~/.ssh/private_key
-          chmod 600 ~/.ssh/private_key
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          scp -r . ${{ secrets.USER }}@${{ secrets.SSH_HOST }}:${{ secrets.WORKDIR }}
 
-      - name: Upload .env to EC2
+      - name: Build and deploy with Docker Compose
         run: |
-          echo COINMARKETCAP_API_KEY=${COINMARKETCAP_API_KEY} >> .env
-          scp -i ~/.ssh/private_key .env ${USER}@${EC2_HOST}:${WORKDIR}
-        env:
-          COINMARKETCAP_API_KEY: ${{ secrets.COINMARKETCAP_API_KEY }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          WORKDIR: ${{ secrets.WORKDIR }}
-          USER: ${{ secrets.USER }}
-
-      - name: Deploy code to EC2
-        run: |
-          ssh -i ~/.ssh/private_key ${USER}@${EC2_HOST} <<-EOF
-          cd ${WORKDIR}
-          git reset --hard HEAD
-          git pull origin main
-          source ./.venv/bin/activate
-          pip install -r ./requirements.txt
+          ssh ${{ secrets.USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          cd ${{ secrets.WORKDIR }}
+          docker compose down
+          docker compose build
+          docker compose up -d
           EOF
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          EC2_HOST: ${{ secrets.EC2_HOST }}
-          WORKDIR: ${{ secrets.WORKDIR }}
-          USER: ${{ secrets.USER }}
