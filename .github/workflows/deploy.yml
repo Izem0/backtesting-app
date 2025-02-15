@@ -21,7 +21,7 @@ jobs:
 
       - name: Copy files to remote server
         run: |
-          scp -r . ${{ secrets.USER }}@${{ secrets.HOST }}:${{ secrets.WORKDIR }}
+          rsync -avz --exclude='.git' . ${{ secrets.USER }}@${{ secrets.HOST }}:${{ secrets.WORKDIR }}
 
       - name: Build and deploy with Docker Compose
         run: |
