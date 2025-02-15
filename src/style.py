@@ -1,6 +1,7 @@
 import re
 
 import pandas as pd
+import pandas.io.formats.style
 from matplotlib.colors import LinearSegmentedColormap
 
 
