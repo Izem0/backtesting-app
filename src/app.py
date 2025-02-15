@@ -220,7 +220,7 @@ st.plotly_chart(cum_returns_graph, use_container_width=True)
 # #########################
 # # CHART MONTHLY RETURNS #
 # #########################
-st.subheader("Monthly returns")
+st.header("Monthly returns")
 # get monthly returns
 monthly_returns = []
 for strat in strategies_choice:
