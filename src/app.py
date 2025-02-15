@@ -14,11 +14,13 @@ import strategies
 from charts import create_cum_returns_graph, create_monthly_bargraph
 from compute import compute_monthly_returns
 from data import get_binance_top_markets
+from logger import setup_logger
 from style import pretty_ohlcv
 from utils import get_module_functions
 
 load_dotenv()
 
+LOG = setup_logger("app")
 BASE_DIR = Path(__file__).resolve().parent
 COMMON_LAYOUT = {"margin": {"l": 0, "r": 0, "t": 25, "b": 0}}
 CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
@@ -185,6 +187,7 @@ pf = vbt.Portfolio.from_orders(
 # display stats
 metrics = [m for m in vbt.Portfolio.metrics.keys() if m not in METRICS_TO_EXCLUDE]
 stats = pf.stats(metrics=metrics, agg_func=None).round(4).T
+stats = stats.astype(str)
 st.dataframe(
     stats,
     height=350,
