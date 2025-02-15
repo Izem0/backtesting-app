@@ -5,5 +5,6 @@ pendulum==3.0.0
 python-dotenv==1.0.1
 python-binance==1.0.27
 plotly==5.18.0
+setuptools==75.8.0
 streamlit==1.28.1
 vectorbt==0.27.2
