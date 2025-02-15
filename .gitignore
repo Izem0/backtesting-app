@@ -7,7 +7,6 @@ backtesting-app.service
 cmds.md
 deploy-to-ec2.md
 docker-compose.override.yml
-Dockerfile
 markets_mapping.json
 strategies.py
 testing_nb.ipynb
