@@ -1,0 +1,37 @@
+services:
+
+  backtesting-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - .env
+    environment:
+      - DOMAIN=${DOMAIN}
+    command: streamlit run ./src/app.py --server.port 8501
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=traefik-public
+      - traefik.constraint-label=traefik-public
+
+      - traefik.http.services.backtesting-app.loadbalancer.server.port=8501
+
+      - traefik.http.routers.backtesting-app-http.rule=Host(`app.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.backtesting-app-http.entrypoints=http
+
+      - traefik.http.routers.backtesting-app-https.rule=Host(`app.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.backtesting-app-https.entrypoints=https
+      - traefik.http.routers.backtesting-app-https.tls=true
+      - traefik.http.routers.backtesting-app-https.tls.certresolver=le
+
+      # Enable redirection for HTTP and HTTPS
+      - traefik.http.routers.backtesting-app-http.middlewares=https-redirect
+    networks:
+      - traefik-public
+      - default
+
+networks:
+  traefik-public:
+    # allow setting it to false for testing
+    external: true
