@@ -21,11 +21,11 @@ jobs:
 
       - name: Copy files to remote server
         run: |
-          scp -r . ${{ secrets.USER }}@${{ secrets.SSH_HOST }}:${{ secrets.WORKDIR }}
+          scp -r . ${{ secrets.USER }}@${{ secrets.HOST }}:${{ secrets.WORKDIR }}
 
       - name: Build and deploy with Docker Compose
         run: |
-          ssh ${{ secrets.USER }}@${{ secrets.SSH_HOST }} << 'EOF'
+          ssh ${{ secrets.USER }}@${{ secrets.HOST }} << 'EOF'
           cd ${{ secrets.WORKDIR }}
           docker compose down
           docker compose build
