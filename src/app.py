@@ -1,6 +1,5 @@
 import datetime as dt
 import os
-from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
@@ -65,13 +64,6 @@ def load_data_cache(
 def get_binance_top_markets_cache() -> list[str]:
     cmc_api_key = os.getenv("COINMARKETCAP_API_KEY")
     return get_binance_top_markets(cmc_api_key)
-
-
-def get_max_length(fn: Callable) -> int:
-    args = fn.__defaults__
-    if not args:
-        return 0
-    return max(args)
 
 
 ##############
