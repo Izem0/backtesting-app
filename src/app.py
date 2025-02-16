@@ -212,7 +212,9 @@ st.dataframe(
 # ############################
 st.header("Benchmark vs Strategy Cumulative return")
 
-cum_returns_graph = create_cum_returns_graph(stats[strategies_choice], **COMMON_LAYOUT)
+cum_returns_graph = create_cum_returns_graph(
+    returns[strategies_choice], **COMMON_LAYOUT
+)
 st.plotly_chart(cum_returns_graph, use_container_width=True)
 
 
