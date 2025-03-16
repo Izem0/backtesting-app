@@ -135,7 +135,7 @@ if not strategies_choice:
 ohlcv_full = load_data_cache(
     symbols=[market],
     interval="1d",
-    start=start_date.subtract(days=90),
+    start=start_date.subtract(days=180),
     end=end_date.add(days=1),
 )
 ohlcv = ohlcv_full.loc[ohlcv_full.index >= start_date]
