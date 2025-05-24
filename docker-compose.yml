@@ -5,8 +5,6 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: always
-    environment:
-      - DOMAIN=${DOMAIN}
     command: streamlit run ./src/app.py --server.port 8501
     labels:
       - traefik.enable=true

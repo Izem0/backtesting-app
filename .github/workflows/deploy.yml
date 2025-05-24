@@ -28,6 +28,7 @@ jobs:
           ssh ${{ secrets.USER }}@${{ secrets.HOST }} << 'EOF'
           cd ${{ secrets.WORKDIR }}
           export DOMAIN=${{ secrets.DOMAIN }}
+          export SYSLOG_ADDRESS=${{ secrets.SYSLOG_ADDRESS }}
           docker compose -f "docker-compose.yml" build
           docker compose -f "docker-compose.yml" up -d
           EOF
