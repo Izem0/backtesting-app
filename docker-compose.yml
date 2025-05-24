@@ -28,6 +28,11 @@ services:
     networks:
       - traefik-public
       - default
+    logging:
+      driver: syslog
+      options:
+        syslog-address: ${SYSLOG_ADDRESS}
+        tag: "{{.Name}}/{{.ID}}"
 
 networks:
   traefik-public:
