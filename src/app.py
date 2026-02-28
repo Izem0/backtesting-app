@@ -183,7 +183,7 @@ stats = stats.astype(str)
 st.dataframe(
     stats,
     height=350,
-    use_container_width=True,
+    width="stretch",
 )
 
 # display cumulative returns
@@ -204,7 +204,7 @@ st.dataframe(
         exclude_regex=r".*signal|open.*",
     ),
     height=350,
-    use_container_width=True,
+    width="stretch",
 )
 
 # ############################
@@ -215,7 +215,7 @@ st.header("Benchmark vs Strategy Cumulative return")
 cum_returns_graph = create_cum_returns_graph(
     returns[strategies_choice], **COMMON_LAYOUT
 )
-st.plotly_chart(cum_returns_graph, use_container_width=True)
+st.plotly_chart(cum_returns_graph, width="stretch")
 
 
 # #########################
@@ -231,4 +231,4 @@ for strat in strategies_choice:
     monthly_returns.append(monthly)
 
 monthly_bargraph = create_monthly_bargraph(monthly_returns, **COMMON_LAYOUT)
-st.plotly_chart(monthly_bargraph, use_container_width=True)
+st.plotly_chart(monthly_bargraph, width="stretch")

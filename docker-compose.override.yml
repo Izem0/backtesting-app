@@ -46,6 +46,7 @@ services:
       - default
 
   backtesting-app:
+    restart: no
     ports:
       - "8501:8501"
     develop:
@@ -57,6 +58,9 @@ services:
             - .venv
         - path: ./requirements.txt
           action: rebuild
+    logging:
+      driver: json-file
+
 networks:
   traefik-public:
     # For local dev, don't expect an external Traefik network
