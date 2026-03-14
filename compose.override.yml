@@ -45,21 +45,9 @@ services:
       - traefik-public
       - default
 
-  backtesting-app:
+  app:
     restart: no
-    ports:
-      - "8501:8501"
-    develop:
-      watch:
-        - path: .
-          action: sync
-          target: /app
-          ignore:
-            - .venv
-        - path: ./requirements.txt
-          action: rebuild
-    logging:
-      driver: json-file
+    logging: !reset
 
 networks:
   traefik-public:

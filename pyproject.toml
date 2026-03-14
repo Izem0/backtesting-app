@@ -4,6 +4,17 @@ version = "0.1.0"
 description = ""
 readme = "readme.md"
 requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.10.8",
+    "pandas>=2.3.3",
+    "pandas-ta>=0.4.71b0",
+    "pendulum>=3.2.0",
+    "plotly>=6.6.0",
+    "python-binance>=1.0.35",
+    "python-dotenv>=1.2.2",
+    "streamlit>=1.55.0",
+    "vectorbt>=0.28.4",
+]
 
 [tool.ruff]
 target-version = "py310"

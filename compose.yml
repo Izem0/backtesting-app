@@ -1,11 +1,15 @@
 services:
 
-  backtesting-app:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
     restart: always
-    command: streamlit run ./src/app.py --server.port 8501
+    ports:
+      - "${SERVER_PORT}:8501"
+    command: uv run streamlit run ./src/app.py
+    env_file:
+      - .env
     labels:
       - traefik.enable=true
       - traefik.docker.network=traefik-public
@@ -13,10 +17,10 @@ services:
 
       - traefik.http.services.backtesting-app.loadbalancer.server.port=8501
 
-      - traefik.http.routers.backtesting-app-http.rule=Host(`backtesting-app.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.backtesting-app-http.rule=Host(`backtesting-app.${DOMAIN}`)
       - traefik.http.routers.backtesting-app-http.entrypoints=http
 
-      - traefik.http.routers.backtesting-app-https.rule=Host(`backtesting-app.${DOMAIN?Variable not set}`)
+      - traefik.http.routers.backtesting-app-https.rule=Host(`backtesting-app.${DOMAIN}`)
       - traefik.http.routers.backtesting-app-https.entrypoints=https
       - traefik.http.routers.backtesting-app-https.tls=true
       - traefik.http.routers.backtesting-app-https.tls.certresolver=le

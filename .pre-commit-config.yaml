@@ -1,4 +1,5 @@
-default_stages: [pre-commit]
+default_install_hook_types: [pre-commit, pre-push]
+
 repos:
   - repo: 'https://github.com/pre-commit/pre-commit-hooks'
     rev: v4.4.0
@@ -6,14 +7,15 @@ repos:
       - id: check-added-large-files
       - id: check-toml
       - id: check-yaml
+        args : [--unsafe]
       - id: end-of-file-fixer
       - id: trailing-whitespace
-
   - repo: https://github.com/astral-sh/ruff-pre-commit
+    # Ruff version.
     rev: v0.6.8
     hooks:
-      - id: ruff  # run the linter
-        types_or: [ python, pyi ]  # avoid running on Jupyter Notebooks
+      # Run the linter.
+      - id: ruff
         args: [ --fix ]
-      - id: ruff-format  # run the formatter
-        types_or: [ python, pyi ]  # avoid running on Jupyter Notebooks
+      # Run the formatter.
+      - id: ruff-format
