@@ -12,7 +12,6 @@ deploy-to-ec2.md
 docker-compose.traefik.yml
 docker-compose.yml
 Dockerfile
-markets_mapping.json
 strategies.py
 testing_nb.ipynb
 testing_script.py

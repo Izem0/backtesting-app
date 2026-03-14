@@ -1,6 +1,5 @@
 import datetime as dt
 import os
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -10,18 +9,17 @@ import vectorbt as vbt
 from dotenv import load_dotenv
 from matplotlib.colors import LinearSegmentedColormap
 
-import strategies
-from charts import create_cum_returns_graph, create_monthly_bargraph
-from compute import compute_monthly_returns
-from data import get_binance_top_markets
-from logger import setup_logger
-from style import pretty_ohlcv
-from utils import get_module_functions
+from lib import strategies
+from lib.charts import create_cum_returns_graph, create_monthly_bargraph
+from lib.compute import compute_monthly_returns
+from lib.data import get_binance_top_markets
+from lib.logger import setup_logger
+from lib.style import pretty_ohlcv
+from lib.utils import get_module_functions
 
 load_dotenv()
 
 LOG = setup_logger("app")
-BASE_DIR = Path(__file__).resolve().parent
 COMMON_LAYOUT = {"margin": {"l": 0, "r": 0, "t": 25, "b": 0}}
 CMAP = LinearSegmentedColormap.from_list("rg", ["r", "w", "g"], N=256)
 RETURNS_COLUMN_CONFIG = {
@@ -67,7 +65,7 @@ st.set_page_config(layout="centered")
 st.title("Backtesting app")
 
 # set css styles
-with open(BASE_DIR / "style.css") as f:
+with open("./src/lib/style.css") as f:
     styles = f.read()
 st.markdown(f"<style>{styles}<style/>", unsafe_allow_html=True)
 
